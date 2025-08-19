@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ChatGPT 對話回憶瀏覽器 — By Minijin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', 'Noto Sans TC', sans-serif; }
+    #chat-window { background-color: #BCA8D9; } 
+    .chat-bubble { max-width: 75%; word-wrap: break-word; white-space: pre-wrap; }
+    .message-enter { opacity: 0; transform: translateY(20px); transition: opacity 0.3s ease, transform 0.3s ease; }
+    .message-enter-active { opacity: 1; transform: translateY(0); }
+    #chat-window::-webkit-scrollbar { width: 6px; }
+    #chat-window::-webkit-scrollbar-track { background: transparent; }
+    #chat-window::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.2); border-radius: 10px; }
+  </style>
+</head>
+<body class="bg-purple-50 min-h-screen p-4">
+
+  <div id="main-container" class="w-full max-w-2xl mx-auto bg-white rounded-2xl shadow-lg p-6 md:p-8">
+    <header class="text-center mb-8">
+      <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-purple-800 whitespace-nowrap">ChatGPT 對話回憶瀏覽器</h1>
+      <p class="text-purple-600 mt-2">由 Minijin(@minijinai75) 和她的小精靈們一起優化與建構 💜｜檔案全程在您的裝置離線處理，安全無虞。</p>
+      <p class="text-purple-600 mt-2">🏰HP：<a href="https://minijinai75.notion.site/" target="_blank" class="underline hover:text-purple-800">https://minijinai75.notion.site/</a></p>
+    </header>
+
+    <div class="space-y-6 mb-8">
+      <div class="bg-purple-100 p-4 rounded-lg border border-purple-200">
+        <h2 class="text-lg font-semibold text-purple-700 mb-3">1. 上傳對話紀錄</h2>
+        <label for="file-upload" class="w-full cursor-pointer bg-purple-500 text-white text-center py-2 px-4 rounded-md hover:bg-purple-600 transition-colors block">選擇 .txt 檔案</label>
+        <input id="file-upload" type="file" class="hidden" accept="text/plain,.txt">
+        <p id="file-name" class="text-sm text-purple-500 mt-2 truncate">尚未選擇檔案</p>
+      </div>
+
+      <div class="bg-purple-100 p-4 rounded-lg border border-purple-200">
+        <h2 class="text-lg font-semibold text-purple-700 mb-3">2.設定對話者ICON及名稱</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div class="flex items-center gap-4">
+            <img id="chatgpt-avatar-preview" src="https://placehold.co/128x128/74AA9C/FFF?text=GPT" class="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md flex-shrink-0" alt="ChatGPT Avatar">
+            <div class="w-full">
+              <label for="chatgpt-name-input" class="text-sm font-medium text-gray-600">ChatGPT 顯示名稱(可留白)</label>
+              <input type="text" id="chatgpt-name-input" class="w-full p-2 border border-gray-300 rounded-md mt-1" placeholder="">
+              <label for="chatgpt-avatar-upload" class="mt-2 text-sm cursor-pointer text-purple-600 hover:underline">更換 ICON</label>
+              <input id="chatgpt-avatar-upload" type="file" class="hidden" accept="image/*">
+            </div>
+          </div>
+          <div class="flex items-center gap-4">
+            <img id="user-avatar-preview" src="https://placehold.co/128x128/8DE041/FFF?text=YOU" class="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md flex-shrink-0" alt="User Avatar">
+            <div class="w-full">
+              <label for="user-name-input" class="text-sm font-medium text-gray-600">使用者顯示名稱(可留白)</label>
+              <input type="text" id="user-name-input" class="w-full p-2 border border-gray-300 rounded-md mt-1" placeholder="">
+              <label for="user-avatar-upload" class="mt-2 text-sm cursor-pointer text-purple-600 hover:underline">更換 ICON</label>
+              <input id="user-avatar-upload" type="file" class="hidden" accept="image/*">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button id="generate-btn" class="w-full bg-pink-500 text-white font-bold py-3 px-8 rounded-lg hover:bg-pink-600 transition-transform transform hover:scale-105 shadow-md disabled:bg-gray-300 disabled:cursor-not-allowed disabled:scale-100" disabled>
+        生成 / 更新預覽
+      </button>
+
+      <div id="controls" class="bg-purple-100 p-4 rounded-lg border border-purple-200 hidden">
+        <div class="flex items-center justify-center gap-4 flex-wrap">
+          <button id="screenshot-btn" class="bg-indigo-500 text-white py-2 px-4 rounded-md hover:bg-indigo-600 transition-colors flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            開啟沉浸對話網頁
+          </button>
+          <p id="message-info" class="text-sm text-purple-600"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="preview-container" class="w-full max-w-md mx-auto bg-black rounded-[40px] p-4 shadow-2xl border-4 border-gray-800 transition-all duration-300 relative">
+    <div class="w-full h-2 bg-black rounded-t-lg"></div>
+    <div id="chat-window" class="h-[65vh] md:h-[70vh] overflow-y-auto p-4 space-y-4 rounded-b-lg">
+      <div class="text-center text-white/70 flex flex-col items-center justify-center h-full">
+        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="opacity-50 mb-4"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        <p class="font-semibold">預覽區域</p>
+        <p class="text-sm">請先上傳對話檔案</p>
+      </div>
+    </div>
+  </div>
+
+  <footer class="w-full text-center mt-8">
+    <p class="text-gray-400 text-xs">ChatGPT Viewer (Based on v4.2.6)</p>
+  </footer>
+
+  <script>
+    const fileUpload = document.getElementById('file-upload');
+    const fileNameDisplay = document.getElementById('file-name');
+    const chatgptAvatarUpload = document.getElementById('chatgpt-avatar-upload');
+    const userAvatarUpload = document.getElementById('user-avatar-upload');
+    const chatgptAvatarPreview = document.getElementById('chatgpt-avatar-preview');
+    const userAvatarPreview = document.getElementById('user-avatar-preview');
+    const chatgptNameInput = document.getElementById('chatgpt-name-input');
+    const userNameInput = document.getElementById('user-name-input');
+    const generateBtn = document.getElementById('generate-btn');
+    const chatWindow = document.getElementById('chat-window');
+    const controls = document.getElementById('controls');
+    const messageInfo = document.getElementById('message-info');
+    const screenshotBtn = document.getElementById('screenshot-btn');
+    let userAvatarSrc = userAvatarPreview.src;
+    let chatgptAvatarSrc = chatgptAvatarPreview.src;
+    let allMessages = [];
+    let fileContent = '';
+    
+    // --- NEW: Regex for ChatGPT format ---
+    const chatGptHeadPattern = /^##\s*ChatGPT:/i;
+    const userHeadPattern = /^##\s*你:/i;
+
+    fileUpload.addEventListener('change', (event) => {
+      const uploadedFile = event.target.files[0];
+      if (uploadedFile) {
+        fileNameDisplay.textContent = uploadedFile.name;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          fileContent = e.target.result;
+          generateBtn.disabled = false;
+        };
+        reader.onerror = (err) => { alert('讀取檔案失敗：' + (err?.message || '未知錯誤')); };
+        reader.readAsText(uploadedFile);
+      } else {
+        fileNameDisplay.textContent = '尚未選擇檔案';
+        fileContent = '';
+        generateBtn.disabled = true;
+      }
+    });
+
+    generateBtn.addEventListener('click', () => { if (fileContent) parseChat(fileContent); });
+
+    const handleAvatarUpload = (input, preview, storage) => {
+      input.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const newSrc = e.target.result;
+            preview.src = newSrc;
+            if (storage === 'user') userAvatarSrc = newSrc; 
+            else chatgptAvatarSrc = newSrc;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    };
+    handleAvatarUpload(chatgptAvatarUpload, chatgptAvatarPreview, 'chatgpt');
+    handleAvatarUpload(userAvatarUpload, userAvatarPreview, 'user');
+    
+    screenshotBtn.addEventListener('click', generateScreenshotPage);
+
+    // --- NEW: Parsing logic for ChatGPT ---
+    function parseChat(text) {
+      allMessages = [];
+      const lines = text.split('\n');
+      let currentMessageObj = null;
+
+      lines.forEach(line => {
+        const trimmedLine = line.trim();
+        const isGpt = chatGptHeadPattern.test(trimmedLine);
+        const isUser = userHeadPattern.test(trimmedLine);
+
+        if (isGpt || isUser) {
+          if (currentMessageObj) {
+            currentMessageObj.content = currentMessageObj.content.trim();
+            allMessages.push(currentMessageObj);
+          }
+          currentMessageObj = { speaker: isGpt ? 'chatgpt' : 'user', content: '' };
+        } else if (currentMessageObj && trimmedLine !== '---') {
+          // Append content, adding a newline if content already exists to preserve paragraphs
+          currentMessageObj.content += (currentMessageObj.content ? '\n' : '') + line;
+        }
+      });
+
+      if (currentMessageObj) {
+        currentMessageObj.content = currentMessageObj.content.trim();
+        allMessages.push(currentMessageObj);
+      }
+      
+      messageInfo.textContent = `共 ${allMessages.length} 則訊息`;
+      controls.classList.remove('hidden');
+      displayMessages(allMessages);
+    }
+
+    function displayMessages(messagesToDisplay) {
+      chatWindow.innerHTML = '';
+      if (messagesToDisplay.length === 0) {
+        chatWindow.innerHTML = `<div class="text-center text-white/70 flex flex-col items-center justify-center h-full"><p class=\"font-semibold\">找不到對話內容</p></div>`;
+        return;
+      }
+      messagesToDisplay.forEach((msg, index) => {
+        const delay = messagesToDisplay.length > 50 ? 0 : index * 20;
+        setTimeout(() => {
+          const speakerName = msg.speaker === 'chatgpt' ? chatgptNameInput.value : userNameInput.value;
+          appendMessage(msg.speaker, speakerName, msg.content);
+        }, delay);
+      });
+      const totalAnimationTime = (messagesToDisplay.length - 1) * (messagesToDisplay.length > 50 ? 0 : 20);
+      setTimeout(() => {
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+      }, totalAnimationTime + 50);
+    }
+
+    function appendMessage(speaker, speakerName, message) {
+      const messageRow = document.createElement('div');
+      const avatar = document.createElement('img');
+      avatar.className = `w-10 h-10 rounded-full object-cover avatar-${speaker}`;
+      const messageContent = document.createElement('div');
+      const bubble = document.createElement('div');
+      bubble.className = 'chat-bubble p-3 rounded-2xl';
+      const safe = (message || '').replace(/\n/g, '<br>');
+      bubble.innerHTML = safe;
+      const showName = !!(speakerName && speakerName.trim().length);
+
+      if (speaker === 'chatgpt') {
+        messageContent.className = 'flex flex-col';
+        messageRow.className = 'flex items-start gap-2 message-enter justify-start';
+        avatar.src = chatgptAvatarSrc;
+        if (showName) {
+          const nameDiv = document.createElement('div');
+          nameDiv.className = 'text-xs text-white mb-1';
+          nameDiv.textContent = speakerName;
+          messageContent.appendChild(nameDiv);
+        }
+        bubble.classList.add('bg-white', 'text-gray-800');
+        messageContent.appendChild(bubble);
+        messageRow.appendChild(avatar);
+        messageRow.appendChild(messageContent);
+      } else { // User
+        messageContent.className = 'flex flex-col items-end';
+        messageRow.className = 'flex items-start gap-2 message-enter justify-end';
+        avatar.src = userAvatarSrc;
+        if (showName) {
+          const nameDiv = document.createElement('div');
+          nameDiv.className = 'text-xs text-white mb-1 text-right';
+          nameDiv.textContent = speakerName;
+          messageContent.appendChild(nameDiv);
+        }
+        bubble.classList.add('bg-pink-300', 'text-gray-800');
+        messageContent.appendChild(bubble);
+        messageRow.appendChild(messageContent);
+        messageRow.appendChild(avatar);
+      }
+      chatWindow.appendChild(messageRow);
+      requestAnimationFrame(() => { messageRow.classList.add('message-enter-active'); });
+    }
+
+    function generateScreenshotPage() {
+        const messagesToDisplay = allMessages;
+        if (messagesToDisplay.length === 0) {
+            alert('目前沒有可供截圖的對話內容。');
+            return;
+        }
+        const screenshotData = {
+            messages: messagesToDisplay,
+            chatgptAvatar: chatgptAvatarSrc,
+            userAvatar: userAvatarSrc,
+            chatgptName: chatgptNameInput.value,
+            userName: userNameInput.value,
+        };
+        localStorage.setItem('screenshotData', JSON.stringify(screenshotData));
+        const newPageContent = `
+        <!DOCTYPE html>
+        <html lang="zh-Hant">
+        <head>
+          <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>對話紀錄截圖</title>
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+          <style>
+            html, body { margin: 0; padding: 0; background-color: #BCA8D9; font-family: 'Inter', 'Noto Sans TC', sans-serif; }
+            #chat-container { display: flex; flex-direction: column; gap: 16px; padding: 16px; max-width: 600px; margin: 0 auto; }
+            .msg-row { display: flex; align-items: flex-start; gap: 8px; }
+            .avatar { width: 40px; height: 40px; border-radius: 9999px; object-fit: cover; flex-shrink: 0; }
+            .content { display: flex; flex-direction: column; }
+            .bubble { padding: 12px; border-radius: 18px; word-wrap: break-word; white-space: pre-wrap; max-width: 100%; }
+            .name { font-size: 0.75rem; line-height: 1rem; color: white; margin-bottom: 4px; }
+            .chatgpt .bubble { background-color: white; color: #1f2937; }
+            .user { justify-content: flex-end; }
+            .user .content { align-items: flex-end; }
+            .user .bubble { background-color: #f9a8d4; color: #1f2937; }
+            .user .name { text-align: right; }
+          </style>
+        </head>
+        <body>
+          <div id="chat-container"></div>
+          <script>
+            window.onload = function() {
+              const data = JSON.parse(localStorage.getItem('screenshotData'));
+              if (!data) return;
+              const container = document.getElementById('chat-container');
+              data.messages.forEach(msg => {
+                const messageRow = document.createElement('div');
+                const avatar = document.createElement('img');
+                avatar.className = 'avatar';
+                const messageContent = document.createElement('div');
+                messageContent.className = 'content';
+                const bubble = document.createElement('div');
+                bubble.className = 'bubble';
+                bubble.innerHTML = (msg.content||'').replace(/\\n/g, '<br>');
+                const showNameGpt = !!(data.chatgptName && data.chatgptName.trim().length);
+                const showNameUser = !!(data.userName && data.userName.trim().length);
+                if (msg.speaker === 'chatgpt') {
+                  messageRow.className = 'msg-row chatgpt';
+                  avatar.src = data.chatgptAvatar;
+                  if (showNameGpt) {
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'name';
+                    nameDiv.textContent = data.chatgptName;
+                    messageContent.appendChild(nameDiv);
+                  }
+                  messageContent.appendChild(bubble);
+                  messageRow.appendChild(avatar);
+                  messageRow.appendChild(messageContent);
+                } else {
+                  messageRow.className = 'msg-row user';
+                  avatar.src = data.userAvatar;
+                  if (showNameUser) {
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'name';
+                    nameDiv.textContent = data.userName;
+                    messageContent.appendChild(nameDiv);
+                  }
+                  messageContent.appendChild(bubble);
+                  messageRow.appendChild(messageContent);
+                  messageRow.appendChild(avatar);
+                }
+                container.appendChild(messageRow);
+              });
+            }
+          <\/script>
+        </body></html>`;
+        const newWindow = window.open();
+        newWindow.document.write(newPageContent);
+        newWindow.document.close();
+    }
+  </script>
+</body>
+</html>
